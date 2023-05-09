@@ -18,6 +18,10 @@ unsigned int log_freq = 30000; // Compute and print accuracy every log_freq iter
 unsigned int num_batches;
 unsigned int batch_size;
 unsigned int total_epochs;
+unsigned int forward_differencing = 0;
+unsigned int backward_differencing = 0;
+unsigned int central_differencing = 0;
+
 double learning_rate;
 
 void print_training_stats(unsigned int epoch_counter, unsigned int total_iter, double mean_loss, double test_accuracy){
@@ -87,7 +91,7 @@ void run_optimisation(void){
             obj_func = evaluate_objective_function(training_sample);
             mean_loss+=obj_func;
 
-			// Validate gradients (expensive, evaluate infrequently)
+	        // Validate gradients (expensive, evaluate infrequently)
 	        validate_gradients(training_sample);
 
             // Update iteration counters (reset at end of training set to allow multiple epochs)
@@ -130,119 +134,123 @@ void run_optimisation(void){
 double validate_gradients(unsigned int sample){
 	// Compute gradients using finite differences
 	// set epsilon to 10e-8
-	double epsilon = 0.0001;
+	double epsilon = 0.00000001;
 	double diff_accumulated = 0.0;
 	double rel_diff_accumulated = 0.0;
+	double time_spent, avg_diff = 0, avg_rel_diff;
+	clock_t start, end;
 	int rel_iter = 0;
 
 	// Validate gradients using forward, backward and central difference
-	 clock_t start = clock();
-	// Validate gradients using forward difference
-	for (int i = 0; i < N_NEURONS_L3; i++) {
-		for (int j = 0; j < N_NEURONS_LO; j++) {
-			// Compute gradient using forward difference
-			w_L3_LO[i][j].w += epsilon;
-			evaluate_forward_pass(training_data, sample);
-			double perturbed_loss_plus_eps = compute_xent_loss(training_labels [sample]);
+	if(forward_differencing){
+		start = clock();
+		// Validate gradients using forward difference
+		for (int i = 0; i < N_NEURONS_L3; i++) {
+			for (int j = 0; j < N_NEURONS_LO; j++) {
+				// Compute gradient using forward difference
+				w_L3_LO[i][j].w += epsilon;
+				evaluate_forward_pass(training_data, sample);
+				double perturbed_loss_plus_eps = compute_xent_loss(training_labels [sample]);
 
-			w_L3_LO[i][j].w -= epsilon;
-			evaluate_forward_pass(training_data, sample);
-			double perturbed_loss = compute_xent_loss(training_labels [sample]);
+				w_L3_LO[i][j].w -= epsilon;
+				evaluate_forward_pass(training_data, sample);
+				double perturbed_loss = compute_xent_loss(training_labels [sample]);
 
-			double numerical_grad = (perturbed_loss_plus_eps - perturbed_loss) / epsilon;
-			double analytical_grad = w_L3_LO[i][j].dw;
+				double numerical_grad = (perturbed_loss_plus_eps - perturbed_loss) / epsilon;
+				double analytical_grad = dL_dW_L3_LO[0][i+(N_NEURONS_L3 * j)];
 
-			// Compute difference between gradients
-			double diff = fabs(numerical_grad - analytical_grad);
-			double rel_diff = (diff / fabs(analytical_grad)) * 100.0;
-			diff_accumulated += diff;
-			if(analytical_grad > 0.0){
-				rel_iter++;
-				rel_diff_accumulated += rel_diff;
+				// Compute difference between gradients
+				double diff = fabs(numerical_grad - analytical_grad);
+				double rel_diff = (diff / fabs(analytical_grad)) * 100.0;
+				diff_accumulated += diff;
+				if(analytical_grad > 0.0){
+					rel_iter++;
+					rel_diff_accumulated += rel_diff;
+				}
 			}
 		}
+		end = clock();
+		time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+		avg_diff = diff_accumulated / (N_NEURONS_L3 * N_NEURONS_LO);
+		avg_rel_diff = rel_diff_accumulated / rel_iter;
+		printf("Forward Diff: Average diff: %.32f, Percentage avg rel_diff: %.32f, Time: %.5f\n", avg_diff, avg_rel_diff, time_spent);
 	}
-	clock_t end = clock();
-	double time_spent = (double)(end - start) / CLOCKS_PER_SEC;
-	double avg_diff = diff_accumulated / (N_NEURONS_L3 * N_NEURONS_LO);
-	double avg_rel_diff = rel_diff_accumulated / rel_iter;
-	printf("Forward Diff: Average diff: %.32f, Percentage avg rel_diff: %.32f, Time: %.5f\n", avg_diff, avg_rel_diff, time_spent);
 
-	diff_accumulated = 0.0;
-	rel_diff_accumulated = 0.0;
-	rel_iter = 0;
-	start = clock();
-	// Validate gradients using backward difference
-	for (int i = 0; i < N_NEURONS_L3; i++) {
-		for (int j = 0; j < N_NEURONS_LO; j++) {
-			// Compute gradient using backward difference
-			w_L3_LO[i][j].w -= epsilon;
-			evaluate_forward_pass(training_data, sample);
-			double perturbed_loss_minus_eps = compute_xent_loss(training_labels [sample]);
+	if(backward_differencing){
+		diff_accumulated = 0.0;
+		rel_diff_accumulated = 0.0;
+		rel_iter = 0;
+		start = clock();
+		// Validate gradients using backward difference
+		for (int i = 0; i < N_NEURONS_L3; i++) {
+			for (int j = 0; j < N_NEURONS_LO; j++) {
+				// Compute gradient using backward difference
+				w_L3_LO[i][j].w -= epsilon;
+				evaluate_forward_pass(training_data, sample);
+				double perturbed_loss_minus_eps = compute_xent_loss(training_labels [sample]);
 
-			w_L3_LO[i][j].w += epsilon;
-			evaluate_forward_pass(training_data, sample);
-			double perturbed_loss = compute_xent_loss(training_labels [sample]);
+				w_L3_LO[i][j].w += epsilon;
+				evaluate_forward_pass(training_data, sample);
+				double perturbed_loss = compute_xent_loss(training_labels [sample]);
 
-			double numerical_grad = (perturbed_loss - perturbed_loss_minus_eps) / epsilon;
-			double analytical_grad = w_L3_LO[i][j].dw;
+				double numerical_grad = (perturbed_loss - perturbed_loss_minus_eps) / epsilon;
+				double analytical_grad = dL_dW_L3_LO[0][i+(N_NEURONS_L3 * j)];
 
-			// Compute difference between gradients
-			double diff = fabs(numerical_grad - analytical_grad);
-			double rel_diff = (diff / fabs(analytical_grad)) * 100.0;
-			diff_accumulated += diff;
-			if(analytical_grad > 0.0){
-				rel_iter++;
-				rel_diff_accumulated += rel_diff;
+				// Compute difference between gradients
+				double diff = fabs(numerical_grad - analytical_grad);
+				double rel_diff = (diff / fabs(analytical_grad)) * 100.0;
+				diff_accumulated += diff;
+				if(analytical_grad > 0.0){
+					rel_iter++;
+					rel_diff_accumulated += rel_diff;
+				}
 			}
 		}
+		end = clock();
+		time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+		avg_diff = diff_accumulated / (N_NEURONS_L3 * N_NEURONS_LO);
+		avg_rel_diff = rel_diff_accumulated / rel_iter;
+		printf("Backward Diff: Average diff: %.32f, Percentage avg rel_diff: %.32f, Time: %.5f\n", avg_diff, avg_rel_diff, time_spent);
 	}
-	end = clock();
-	time_spent = (double)(end - start) / CLOCKS_PER_SEC;
-	avg_diff = diff_accumulated / (N_NEURONS_L3 * N_NEURONS_LO);
-	avg_rel_diff = rel_diff_accumulated / rel_iter;
-	printf("Backward Diff: Average diff: %.32f, Percentage avg rel_diff: %.32f, Time: %.5f\n", avg_diff, avg_rel_diff, time_spent);
 
-	diff_accumulated = 0.0;
-	rel_diff_accumulated = 0.0;
-	rel_iter = 0;
-	start = clock();
-	// Validate gradients using central difference
-	for (int i = 0; i < N_NEURONS_L3; i++) {
-		for (int j = 0; j < N_NEURONS_LO; j++) {
-			w_L3_LO[i][j].w += epsilon;
-			evaluate_forward_pass(training_data, sample);
-			double perturbed_loss_plus_eps = compute_xent_loss(training_labels [sample]);
+	if(central_differencing){
+		diff_accumulated = 0.0;
+		rel_diff_accumulated = 0.0;
+		rel_iter = 0;
+		start = clock();
+		// Validate gradients using central difference
+		for (int i = 0; i < N_NEURONS_L3; i++) {
+			for (int j = 0; j < N_NEURONS_LO; j++) {
+				w_L3_LO[i][j].w += epsilon;
+				evaluate_forward_pass(training_data, sample);
+				double perturbed_loss_plus_eps = compute_xent_loss(training_labels [sample]);
 
-			w_L3_LO[i][j].w -= 2 * epsilon;
-			evaluate_forward_pass(training_data, sample);
-			double perturbed_loss_minus_eps = compute_xent_loss(training_labels [sample]);
+				w_L3_LO[i][j].w -= 2 * epsilon;
+				evaluate_forward_pass(training_data, sample);
+				double perturbed_loss_minus_eps = compute_xent_loss(training_labels [sample]);
 
-			w_L3_LO[i][j].w += epsilon;
+				w_L3_LO[i][j].w += epsilon;
 
-			double numerical_grad = (perturbed_loss_plus_eps - perturbed_loss_minus_eps) / (2 * epsilon);
-			double analytical_grad = w_L3_LO[i][j].dw;
+				double numerical_grad = (perturbed_loss_plus_eps - perturbed_loss_minus_eps) / (2 * epsilon);
+				double analytical_grad = dL_dW_L3_LO[0][i+(N_NEURONS_L3 * j)];
 
-			// Compute difference between gradients
-			double diff = fabs(numerical_grad - analytical_grad);
-			double rel_diff = (diff / fabs(analytical_grad)) * 100;
-			
-			diff_accumulated += diff;
-			if(analytical_grad > 0.0){
-				rel_iter++;
-				rel_diff_accumulated += rel_diff;
+				// Compute difference between gradients
+				double diff = fabs(numerical_grad - analytical_grad);
+				double rel_diff = (diff / fabs(analytical_grad)) * 100;
+
+				diff_accumulated += diff;
+				if(analytical_grad > 0.0){
+					rel_iter++;
+					rel_diff_accumulated += rel_diff;
+				}
 			}
 		}
+		end = clock();
+		time_spent = (double)(end - start) / CLOCKS_PER_SEC;
+		avg_diff = diff_accumulated / (N_NEURONS_L3 * N_NEURONS_LO);
+		avg_rel_diff = rel_diff_accumulated / rel_iter;
+		printf("Central Diff: Average diff: %.32f, Percentage avg rel_diff: %.32f, Time: %.5f\n", avg_diff, avg_rel_diff, time_spent);
 	}
-	end = clock();
-
-	time_spent = (double)(end - start) / CLOCKS_PER_SEC;
-	avg_diff = diff_accumulated / (N_NEURONS_L3 * N_NEURONS_LO);
-	avg_rel_diff = rel_diff_accumulated / rel_iter;
-	// print rel diff acc and rel iter
-	printf("%f, %d\n", rel_diff_accumulated, rel_iter);
-	printf("Central Diff: Average diff: %.32f, Percentage avg rel_diff: %.32f, Time: %.5f\n", avg_diff, avg_rel_diff, time_spent);
-
 	return avg_diff;
 }
 
