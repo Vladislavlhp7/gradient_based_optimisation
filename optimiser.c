@@ -77,9 +77,66 @@ void run_optimisation(void){
     test_accuracy = evaluate_testing_accuracy();
     print_training_stats(epoch_counter, total_iter, (mean_loss/((double) log_freq)), test_accuracy);
 
+	// Validate gradients (expensive, evaluate infrequently)
+	for (int v = 0; v < 10; ++v) {
+		validate_gradients(v);
+	}
 }
 
 
+void validate_gradients(unsigned int sample){
+	// Forward pass
+	double loss = evaluate_objective_function(sample);
+
+	// Compute gradients using finite differences
+	double epsilon = 0.0001;
+	double fd_grad = 0.0;
+	double bp_grad = 0.0;
+	double diff = 0.0;
+	double rel_diff = 0.0;
+	double max_rel_diff = 0.0;
+	double max_diff = 0.0;
+	unsigned int max_diff_i = 0;
+	unsigned int max_diff_j = 0;
+	unsigned int max_rel_diff_i = 0;
+	unsigned int max_rel_diff_j = 0;
+
+	// Validate gradients
+	for (int i = 0; i < N_NEURONS_L3; i++){
+		for (int j = 0; j < N_NEURONS_LO; j++){
+			// Compute gradient using finite differences
+			w_L3_LO[i][j].w += epsilon;
+			double perturbed_loss = evaluate_objective_function(sample);
+
+			fd_grad = (perturbed_loss - loss)/epsilon;
+
+			// Compute gradient using back-propagation
+			bp_grad = w_L3_LO[i][j].dw;
+
+			// Compute difference between gradients
+			diff = fabs(fd_grad - bp_grad);
+			rel_diff = diff/fabs(fd_grad);
+
+			// Update max diff
+			if (diff > max_diff){
+				max_diff = diff;
+				max_diff_i = i;
+				max_diff_j = j;
+			}
+
+			// Update max relative diff
+			if (rel_diff > max_rel_diff){
+				max_rel_diff = rel_diff;
+				max_rel_diff_i = i;
+				max_rel_diff_j = j;
+			}
+		}
+	}
+
+	// Print max diff
+	printf("Max diff: %f, i: %u, j: %u\n", max_diff, max_diff_i, max_diff_j);
+	printf("Max rel diff: %f, i: %u, j: %u\n", max_rel_diff, max_rel_diff_i, max_rel_diff_j);
+}
 
 double evaluate_objective_function(unsigned int sample){
 
