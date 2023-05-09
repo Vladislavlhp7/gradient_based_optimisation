@@ -84,6 +84,13 @@ void run_optimisation(void){
 }
 
 
+/*
+ * Validate gradients using finite differences
+ *
+ * @param sample: index of sample to use for validation
+ *
+ * @return: void
+ */
 void validate_gradients(unsigned int sample){
 	// Forward pass
 	double loss = evaluate_objective_function(sample);
@@ -154,6 +161,14 @@ double evaluate_objective_function(unsigned int sample){
     return loss;
 }
 
+/*
+ * Evaluate forward pass of network
+ *
+ * @param data: pointer to training data
+ * @param sample: index of sample to use for forward pass
+ *
+ * @return: void
+ */
 void update_weights(unsigned int N_NEURONS_I, unsigned int N_NEURONS_O, weight_struct_t w_I_O[N_NEURONS_I][N_NEURONS_O]){
 	// Update weights for given layers using mini-batch gradient descent
 	for (int i = 0; i < N_NEURONS_I; ++i) {
