@@ -7,7 +7,7 @@
 void update_parameters(unsigned int batch_size);
 void print_training_stats(unsigned int epoch_counter, unsigned int total_iter, double mean_loss, double test_accuracy);
 
-void validate_gradients(unsigned int sample);
+double validate_gradients(unsigned int sample);
 
 // Optimisation parameters
 unsigned int log_freq = 30000; // Compute and print accuracy every log_freq iterations
@@ -32,6 +32,27 @@ void initialise_optimiser(double cmd_line_learning_rate, int cmd_line_batch_size
            total_epochs, batch_size, num_batches, learning_rate);
 }
 
+/*
+ * Plot the validation of the gradients over time in a graph
+ */
+void plot_gradients(void){
+	FILE *f = fopen("grad_validation.txt", "r");
+	if (f == NULL) {
+		printf("Error opening file!\n");
+		return;
+	}
+	char * commandsForGnuplot[] = {
+			"set title \"Relative FD Error over Training Epochs\"",
+			"set ylabel \"Relative FD Error\"",
+			"set xlabel \"Number of epochs\"",
+			"plot 'grad_validation.txt' using 1:2 with lines dt 2 lt 9 lc 7 title 'Absolute Error - Provided SR', 'part1.temp' using 1:3 with lines lc 6 title 'Absolute Error - Alternative SR'"
+	};
+	FILE * gnuplotPipe = popen ("gnuplot -persistent", "w");
+	for (int i=0; i < 4; i++){
+		fprintf(gnuplotPipe, "%s \n", commandsForGnuplot[i]); //Send commands to gnuplot one by one.
+	}
+}
+
 void run_optimisation(void){
     unsigned int training_sample = 0;
     unsigned int total_iter = 0;
@@ -39,7 +60,10 @@ void run_optimisation(void){
     unsigned int epoch_counter = 0;
     double test_accuracy = 0.0;  //evaluate_testing_accuracy();
     double mean_loss = 0.0;
-    
+
+	// Validate gradients (expensive, evaluate infrequently)
+	double grad_valid_arr[gradient_validation_num_samples];
+
     // Run optimiser - update parameters after each mini-batch
     for (int i=0; i < num_batches; i++){
         for (int j = 0; j < batch_size; j++){
@@ -77,10 +101,16 @@ void run_optimisation(void){
     test_accuracy = evaluate_testing_accuracy();
     print_training_stats(epoch_counter, total_iter, (mean_loss/((double) log_freq)), test_accuracy);
 
-	// Validate gradients (expensive, evaluate infrequently)
-	for (int v = 0; v < 10; ++v) {
-		validate_gradients(v);
+
+	FILE *f = fopen("grad_validation.txt", "a");
+	for (int v = 0; v < gradient_validation_num_samples; ++v) {
+		// Validate gradients (expensive, evaluate infrequently)
+		grad_valid_arr[v] = validate_gradients(v);
+		fprintf(f, "%d, %d, %f\n", total_epochs, v, grad_valid_arr[v]);
 	}
+	fclose(f);
+	// Plot gradients
+	// plot_gradients();
 }
 
 
@@ -89,9 +119,9 @@ void run_optimisation(void){
  *
  * @param sample: index of sample to use for validation
  *
- * @return: void
+ * @return: double, maximum relative difference between gradients
  */
-void validate_gradients(unsigned int sample){
+double validate_gradients(unsigned int sample){
 	// Forward pass
 	double loss = evaluate_objective_function(sample);
 
@@ -137,12 +167,18 @@ void validate_gradients(unsigned int sample){
 				max_rel_diff_i = i;
 				max_rel_diff_j = j;
 			}
+
+			// Reset the weight back to its original value
+			w_L3_LO[i][j].w -= epsilon;
 		}
 	}
 
 	// Print max diff
 	printf("Max diff: %f, i: %u, j: %u\n", max_diff, max_diff_i, max_diff_j);
 	printf("Max rel diff: %f, i: %u, j: %u\n", max_rel_diff, max_rel_diff_i, max_rel_diff_j);
+
+	// return both max diff and max relative diff
+	return max_rel_diff;
 }
 
 double evaluate_objective_function(unsigned int sample){
