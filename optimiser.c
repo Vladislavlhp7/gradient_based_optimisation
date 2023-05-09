@@ -97,10 +97,22 @@ double evaluate_objective_function(unsigned int sample){
     return loss;
 }
 
+void update_weights(unsigned int N_NEURONS_I, unsigned int N_NEURONS_O, weight_struct_t w_I_O[N_NEURONS_I][N_NEURONS_O]){
+	// Update weights for given layers using mini-batch gradient descent
+	for (int i = 0; i < N_NEURONS_I; ++i) {
+		for (int j = 0; j < N_NEURONS_O; ++j) {
+			w_I_O[i][j].w -= learning_rate * w_I_O[i][j].dw;
+			w_I_O[i][j].dw = 0;
+		}
+	}
+}
 
 void update_parameters(unsigned int batch_size){
     // Part I To-do
-
+	update_weights(N_NEURONS_L3, N_NEURONS_LO, w_L3_LO);
+	update_weights(N_NEURONS_L2, N_NEURONS_L3, w_L2_L3);
+	update_weights(N_NEURONS_L1, N_NEURONS_L2, w_L1_L2);
+	update_weights(N_NEURONS_LI, N_NEURONS_L1, w_LI_L1);
 }
 
 
