@@ -136,6 +136,11 @@ double validate_gradients(unsigned int sample){
 	double diff_accumulated = 0.0;
 	double rel_diff_accumulated = 0.0;
 
+	// Forward and backward pass
+	evaluate_forward_pass(training_data, sample);
+	// Calculate gradients
+	evaluate_backward_pass(training_labels[sample], sample);
+
 	 clock_t start = clock();
 
 	// Validate gradients
