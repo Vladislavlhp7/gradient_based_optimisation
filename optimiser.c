@@ -1,3 +1,5 @@
+#include <sys/times.h>
+#include <time.h>
 #include "optimiser.h"
 #include "mnist_helper.h"
 #include "neural_network.h"
@@ -122,63 +124,52 @@ void run_optimisation(void){
  * @return: double, maximum relative difference between gradients
  */
 double validate_gradients(unsigned int sample){
-	// Forward pass
-	double loss = evaluate_objective_function(sample);
-
 	// Compute gradients using finite differences
-	double epsilon = 0.0001;
+	// set epsilon to 10e-8
+	double epsilon = 0.00000001;
 	double fd_grad = 0.0;
 	double bp_grad = 0.0;
 	double diff = 0.0;
 	double rel_diff = 0.0;
-	double max_rel_diff = 0.0;
-	double max_diff = 0.0;
-	unsigned int max_diff_i = 0;
-	unsigned int max_diff_j = 0;
-	unsigned int max_rel_diff_i = 0;
-	unsigned int max_rel_diff_j = 0;
+	// avg difference between gradients
+	double avg_diffs[gradient_validation_num_samples];
+	double diff_accumulated = 0.0;
+	double rel_diff_accumulated = 0.0;
+
+	 clock_t start = clock();
 
 	// Validate gradients
 	for (int i = 0; i < N_NEURONS_L3; i++){
 		for (int j = 0; j < N_NEURONS_LO; j++){
 			// Compute gradient using finite differences
 			w_L3_LO[i][j].w += epsilon;
-			double perturbed_loss = evaluate_objective_function(sample);
+			double perturbed_loss_1 = evaluate_objective_function(sample);
+			w_L3_LO[i][j].w -= 2 * epsilon;
+			double perturbed_loss_2 = evaluate_objective_function(sample);
 
-			fd_grad = (perturbed_loss - loss)/epsilon;
+			fd_grad = (perturbed_loss_1 - perturbed_loss_2)/(2 * epsilon);
 
 			// Compute gradient using back-propagation
 			bp_grad = w_L3_LO[i][j].dw;
 
-			// Compute difference between gradients
+			// Compute average difference between gradients
 			diff = fabs(fd_grad - bp_grad);
 			rel_diff = diff/fabs(fd_grad);
 
-			// Update max diff
-			if (diff > max_diff){
-				max_diff = diff;
-				max_diff_i = i;
-				max_diff_j = j;
-			}
-
-			// Update max relative diff
-			if (rel_diff > max_rel_diff){
-				max_rel_diff = rel_diff;
-				max_rel_diff_i = i;
-				max_rel_diff_j = j;
-			}
+			// Accumulate differences
+			diff_accumulated += diff;
+			rel_diff_accumulated += rel_diff;
 
 			// Reset the weight back to its original value
-			w_L3_LO[i][j].w -= epsilon;
+			w_L3_LO[i][j].w -= 2 * epsilon;
 		}
 	}
+	clock_t end = clock();
 
-	// Print max diff
-	printf("Max diff: %f, i: %u, j: %u\n", max_diff, max_diff_i, max_diff_j);
-	printf("Max rel diff: %f, i: %u, j: %u\n", max_rel_diff, max_rel_diff_i, max_rel_diff_j);
-
-	// return both max diff and max relative diff
-	return max_rel_diff;
+	// Compute average difference between gradients
+	avg_diffs[0] = diff_accumulated/((double) (N_NEURONS_L3*N_NEURONS_LO));
+	printf("Avg abs diff: %f \t Time taken: %f\n", avg_diffs[0], ((double) (end - start)) / CLOCKS_PER_SEC);
+	return avg_diffs[0];
 }
 
 double evaluate_objective_function(unsigned int sample){
