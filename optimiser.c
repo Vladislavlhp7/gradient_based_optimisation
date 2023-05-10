@@ -24,6 +24,7 @@ unsigned int central_differencing = 0;
 unsigned int adaptive_learning_rate = 1;
 double learning_rate_0 = 0.1;
 double learning_rate_N = 0.001;
+unsigned int use_adagrad = 0;
 
 double learning_rate;
 
@@ -78,7 +79,10 @@ void run_optimisation(void){
 	sprintf(optimization_filename, "data/training_%f_%d.txt", learning_rate, batch_size);
 	sprintf(validation_filename, "data/validation_%f_%d.txt", learning_rate, batch_size);
 	FILE *train_f = fopen(optimization_filename, "w");
-	FILE *valid_f = fopen(validation_filename, "w");
+	FILE *valid_f;
+	if(forward_differencing || backward_differencing || central_differencing){
+		valid_f = fopen(validation_filename, "w");
+	}
 
     // Run optimiser - update parameters after each mini-batch
     for (int i=0; i < num_batches; i++){
