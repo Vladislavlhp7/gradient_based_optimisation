@@ -9,7 +9,7 @@
 void update_parameters(unsigned int batch_size);
 void print_training_stats(unsigned int epoch_counter, unsigned int total_iter, double mean_loss, double test_accuracy);
 
-double validate_gradients(unsigned int sample);
+double validate_gradients(unsigned int sample, FILE *f);
 
 // Optimisation parameters
 unsigned int log_freq = 30000; // Compute and print accuracy every log_freq iterations
@@ -21,6 +21,9 @@ unsigned int total_epochs;
 unsigned int forward_differencing = 0;
 unsigned int backward_differencing = 0;
 unsigned int central_differencing = 0;
+unsigned int adaptive_learning_rate = 1;
+double learning_rate_0 = 0.1;
+double learning_rate_N = 0.001;
 
 double learning_rate;
 
@@ -70,6 +73,13 @@ void run_optimisation(void){
 	// Validate gradients (expensive, evaluate infrequently)
 	double grad_valid_arr[gradient_validation_num_samples];
 
+	// make an optimization file based on learning rate and batch size
+	char optimization_filename[50], validation_filename[50];
+	sprintf(optimization_filename, "data/training_%f_%d.txt", learning_rate, batch_size);
+	sprintf(validation_filename, "data/validation_%f_%d.txt", learning_rate, batch_size);
+	FILE *train_f = fopen(optimization_filename, "w");
+	FILE *valid_f = fopen(validation_filename, "w");
+
     // Run optimiser - update parameters after each mini-batch
     for (int i=0; i < num_batches; i++){
         for (int j = 0; j < batch_size; j++){
@@ -83,6 +93,10 @@ void run_optimisation(void){
                 test_accuracy = evaluate_testing_accuracy();
                 print_training_stats(epoch_counter, total_iter, mean_loss, test_accuracy);
 
+				// Save to file
+	            printf("%d, %f, %f\n", epoch_counter, mean_loss, test_accuracy);
+				fprintf(train_f, "%d, %f, %f\n", epoch_counter, mean_loss, test_accuracy);
+
                 // Reset mean_loss for next reporting period
                 mean_loss = 0.0;
             }
@@ -92,7 +106,7 @@ void run_optimisation(void){
             mean_loss+=obj_func;
 
 	        // Validate gradients (expensive, evaluate infrequently)
-	        validate_gradients(training_sample);
+	        validate_gradients(training_sample, valid_f);
 
             // Update iteration counters (reset at end of training set to allow multiple epochs)
             total_iter++;
@@ -103,22 +117,21 @@ void run_optimisation(void){
                 epoch_counter++;
             }
         }
-
+	    if(adaptive_learning_rate) {
+		    // adaptive learning rate: ηk = η0(1 − α) + αηN
+		    double learning_rate_alpha = (double) epoch_counter / (double) total_epochs;
+		    learning_rate = learning_rate_0 * (1 - learning_rate_alpha) + learning_rate_N * learning_rate_alpha;
+	    }
         // Update weights on batch completion
         update_parameters(batch_size);
     }
+	fclose(train_f);
+	fclose(valid_f);
+	
     // Print final performance
     test_accuracy = evaluate_testing_accuracy();
     print_training_stats(epoch_counter, total_iter, (mean_loss/((double) log_freq)), test_accuracy);
 
-
-//	FILE *f = fopen("grad_validation.txt", "a");
-//	for (int v = 0; v < gradient_validation_num_samples; ++v) {
-//		// Validate gradients (expensive, evaluate infrequently)
-//		grad_valid_arr[v] = validate_gradients(v);
-//		fprintf(f, "%d, %d, %f\n", total_epochs, v, grad_valid_arr[v]);
-//	}
-//	fclose(f);
 	// Plot gradients
 	// plot_gradients();
 }
@@ -128,10 +141,11 @@ void run_optimisation(void){
  * Validate gradients using finite differences
  *
  * @param sample: index of sample to use for validation
+ * @param f: file to write to
  *
  * @return: double, maximum relative difference between gradients
  */
-double validate_gradients(unsigned int sample){
+double validate_gradients(unsigned int sample, FILE* f){
 	// Compute gradients using finite differences
 	// set epsilon to 10e-8
 	double epsilon = 0.00000001;
@@ -162,12 +176,15 @@ double validate_gradients(unsigned int sample){
 				// Compute difference between gradients
 				double diff = fabs(numerical_grad - analytical_grad);
 				double rel_diff = (diff / fabs(analytical_grad)) * 100.0;
+				fprintf(f, "%f ", rel_diff);
+
 				diff_accumulated += diff;
 				if(analytical_grad > 0.0){
 					rel_iter++;
 					rel_diff_accumulated += rel_diff;
 				}
 			}
+			fprintf(f, "\n");
 		}
 		end = clock();
 		time_spent = (double)(end - start) / CLOCKS_PER_SEC;
@@ -199,12 +216,15 @@ double validate_gradients(unsigned int sample){
 				// Compute difference between gradients
 				double diff = fabs(numerical_grad - analytical_grad);
 				double rel_diff = (diff / fabs(analytical_grad)) * 100.0;
+				fprintf(f, "%f ", rel_diff);
+
 				diff_accumulated += diff;
 				if(analytical_grad > 0.0){
 					rel_iter++;
 					rel_diff_accumulated += rel_diff;
 				}
 			}
+			fprintf(f, "\n");
 		}
 		end = clock();
 		time_spent = (double)(end - start) / CLOCKS_PER_SEC;
@@ -237,6 +257,7 @@ double validate_gradients(unsigned int sample){
 				// Compute difference between gradients
 				double diff = fabs(numerical_grad - analytical_grad);
 				double rel_diff = (diff / fabs(analytical_grad)) * 100;
+				fprintf(f, "%f ", rel_diff);
 
 				diff_accumulated += diff;
 				if(analytical_grad > 0.0){
@@ -244,6 +265,7 @@ double validate_gradients(unsigned int sample){
 					rel_diff_accumulated += rel_diff;
 				}
 			}
+			fprintf(f, "\n");
 		}
 		end = clock();
 		time_spent = (double)(end - start) / CLOCKS_PER_SEC;
