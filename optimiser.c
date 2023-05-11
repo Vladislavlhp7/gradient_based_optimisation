@@ -31,9 +31,6 @@ double** accumulated_gradients_L3_LO;
 double** accumulated_gradients_L2_L3;
 double** accumulated_gradients_L1_L2;
 double** accumulated_gradients_LI_L1;
-
-
-
 double learning_rate;
 
 void print_training_stats(unsigned int epoch_counter, unsigned int total_iter, double mean_loss, double test_accuracy){
@@ -85,16 +82,13 @@ void run_optimisation(void){
     unsigned int epoch_counter = 0;
     double test_accuracy = 0.0;  //evaluate_testing_accuracy();
     double mean_loss = 0.0;
-	init_parameters_adagrad();
-
-	// Validate gradients (expensive, evaluate infrequently)
-	double grad_valid_arr[gradient_validation_num_samples];
 
 	if(adaptive_learning_rate){
 		printf("Using adaptive learning rate with lr_0 = %f and lr_N = %f\n", learning_rate_0, learning_rate_N);
 	}
 	if(use_adagrad){
 		printf("Using AdaGrad\n");
+		init_parameters_adagrad();
 	}
 	else{
 		printf("Using SGD\n");
@@ -369,23 +363,30 @@ void update_parameters(unsigned int batch_size){
  *
  * @return: void
  */
-void adagrad_optimizer_update(double* parameters, double* gradients, double* accumulated_gradients, double learning_rate, double epsilon, int total_parameters) {
-	for (int i = 0; i < total_parameters; i++) {
-		accumulated_gradients[i] += gradients[i] * gradients[i];
-		double adaptive_learning_rate = learning_rate / (sqrt(accumulated_gradients[i]) + epsilon);
-		parameters[i] -= adaptive_learning_rate * gradients[i];
+void adagrad_optimizer_update(weight_struct_t* gradients, double* accumulated_gradients, double learning_rate,
+							  double epsilon, int rows, int cols, unsigned int batch_size) {
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+			int index = i * cols + j;
+			accumulated_gradients[index] += gradients[index].dw * gradients[index].dw / (double) batch_size;
+			double adaptive_learning_rate = learning_rate / (sqrt(accumulated_gradients[index]) + epsilon);
+			gradients[index].w -= adaptive_learning_rate * gradients[index].dw;
+			gradients[index].dw = 0;
+		}
 	}
 }
 
+
 void update_parameters_adagrad(unsigned int batch_size){
-	double epsilon = 1e-7;
-	adagrad_optimizer_update((double*)w_L3_LO, (double*)dL_dW_L3_LO, (double*)accumulated_gradients_L3_LO, learning_rate, epsilon, N_NEURONS_L3 * N_NEURONS_LO);
-	adagrad_optimizer_update((double*)w_L2_L3, (double*)dL_dW_L2_L3, (double*)accumulated_gradients_L2_L3, learning_rate, epsilon, N_NEURONS_L2 * N_NEURONS_L3);
-	adagrad_optimizer_update((double*)w_L1_L2, (double*)dL_dW_L1_L2, (double*)accumulated_gradients_L1_L2, learning_rate, epsilon, N_NEURONS_L1 * N_NEURONS_L2);
-	adagrad_optimizer_update((double*)w_LI_L1, (double*)dL_dW_LI_L1, (double*)accumulated_gradients_LI_L1, learning_rate, epsilon, N_NEURONS_LI * N_NEURONS_L1);
+	double epsilon = 1e-8;
+	adagrad_optimizer_update((weight_struct_t *) w_L3_LO, (double *) accumulated_gradients_L3_LO, learning_rate, epsilon, N_NEURONS_L3, N_NEURONS_LO, batch_size);
+	adagrad_optimizer_update((weight_struct_t *) w_L2_L3, (double *) accumulated_gradients_L2_L3, learning_rate, epsilon, N_NEURONS_L2, N_NEURONS_L3, batch_size);
+	adagrad_optimizer_update((weight_struct_t *) w_L1_L2, (double *) accumulated_gradients_L1_L2, learning_rate, epsilon, N_NEURONS_L1, N_NEURONS_L2, batch_size);
+	adagrad_optimizer_update((weight_struct_t *) w_LI_L1, (double *) accumulated_gradients_LI_L1, learning_rate, epsilon, N_NEURONS_LI, N_NEURONS_L1, batch_size);
 }
 
 void init_parameters_adagrad(){
+	double init_value = 0.0;
 	accumulated_gradients_L3_LO = (double **)malloc(sizeof(double *) * N_NEURONS_L3);
 	accumulated_gradients_L2_L3 = (double **)malloc(sizeof(double *) * N_NEURONS_L2);
 	accumulated_gradients_L1_L2 = (double **)malloc(sizeof(double *) * N_NEURONS_L1);
@@ -409,22 +410,22 @@ void init_parameters_adagrad(){
 
 	for(int i = 0; i < N_NEURONS_L3; i++){
 		for(int j = 0; j < N_NEURONS_LO; j++){
-			accumulated_gradients_L3_LO[i][j] = 0.0;
+			accumulated_gradients_L3_LO[i][j] = init_value;
 		}
 	}
 	for(int i = 0; i < N_NEURONS_L2; i++){
 		for(int j = 0; j < N_NEURONS_L3; j++){
-			accumulated_gradients_L2_L3[i][j] = 0.0;
+			accumulated_gradients_L2_L3[i][j] = init_value;
 		}
 	}
 	for(int i = 0; i < N_NEURONS_L1; i++){
 		for(int j = 0; j < N_NEURONS_L2; j++){
-			accumulated_gradients_L1_L2[i][j] = 0.0;
+			accumulated_gradients_L1_L2[i][j] = init_value;
 		}
 	}
 	for(int i = 0; i < N_NEURONS_LI; i++){
 		for(int j = 0; j < N_NEURONS_L1; j++){
-			accumulated_gradients_LI_L1[i][j] = 0.0;
+			accumulated_gradients_LI_L1[i][j] = init_value;
 		}
 	}
 }
