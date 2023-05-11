@@ -5,3 +5,6 @@ mnist_optimiser.out:
 
 clean:
 	rm mnist_optimiser.out
+
+run:
+	./mnist_optimiser.out mnist_data 0.01 10 10
