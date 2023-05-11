@@ -158,6 +158,7 @@ void initialise_weight_matrices(void){
         for (int j=0; j <N_NEURONS_L1; j++){
             w_LI_L1[i][j].w = drand(-w_limit, w_limit);
             w_LI_L1[i][j].dw = 0.0;
+			w_LI_L1[i][j].prev_dw = 0.0;
         }
     }
     
@@ -167,6 +168,7 @@ void initialise_weight_matrices(void){
         for (int j=0; j <N_NEURONS_L2; j++){
             w_L1_L2[i][j].w = drand(-w_limit, w_limit);
             w_L1_L2[i][j].dw = 0.0;
+			w_L1_L2[i][j].prev_dw = 0.0;
         }
     }
     
@@ -176,6 +178,7 @@ void initialise_weight_matrices(void){
         for (int j=0; j <N_NEURONS_L3; j++){
             w_L2_L3[i][j].w = drand(-w_limit, w_limit);
             w_L2_L3[i][j].dw = 0.0;
+	        w_L2_L3[i][j].prev_dw = 0.0;
         }
     }
     
@@ -185,6 +188,7 @@ void initialise_weight_matrices(void){
         for (int j=0; j <N_NEURONS_LO; j++){
             w_L3_LO[i][j].w = drand(-w_limit, w_limit);
             w_L3_LO[i][j].dw = 0.0;
+	        w_L3_LO[i][j].prev_dw = 0.0;
         }
     }
 }
@@ -498,7 +502,7 @@ void evaluate_backward_pass(uint8_t label, unsigned int input_class_index){
     
 }
 
-void evaluate_backward_pass_sparse(uint8_t label, unsigned int input_class_index){
+void  evaluate_backward_pass_sparse(uint8_t label, unsigned int input_class_index){
     // Update all Gradients/Jacobians via error backpropagation
     
     // Evaluate gradient of loss function wrt to output layer activity

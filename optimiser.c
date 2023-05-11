@@ -23,10 +23,14 @@ unsigned int total_epochs;
 unsigned int forward_differencing = 0;
 unsigned int backward_differencing = 0;
 unsigned int central_differencing = 0;
+
 unsigned int adaptive_learning_rate = 0;
+unsigned int use_adagrad = 0;
+unsigned int use_momentum = 1;
+double momentum = 0.9;
 double learning_rate_0 = 0.1;
 double learning_rate_N = 0.001;
-unsigned int use_adagrad = 1;
+
 double** accumulated_gradients_L3_LO;
 double** accumulated_gradients_L2_L3;
 double** accumulated_gradients_L1_L2;
@@ -85,6 +89,9 @@ void run_optimisation(void){
 
 	if(adaptive_learning_rate){
 		printf("Using adaptive learning rate with lr_0 = %f and lr_N = %f\n", learning_rate_0, learning_rate_N);
+	}
+	if(use_momentum){
+		printf("Using momentum with momentum = %f\n", momentum);
 	}
 	if(use_adagrad){
 		printf("Using AdaGrad\n");
@@ -337,7 +344,14 @@ void update_weights(unsigned int N_NEURONS_I, unsigned int N_NEURONS_O,
 	// Update weights for given layers using mini-batch gradient descent
 	for (int i = 0; i < N_NEURONS_I; ++i) {
 		for (int j = 0; j < N_NEURONS_O; ++j) {
-			w_I_O[i][j].w -= learning_rate * w_I_O[i][j].dw / (double) batch_size;
+			if(use_momentum){
+				double dw_current = momentum * w_I_O[i][j].prev_dw - learning_rate * w_I_O[i][j].dw / (double) batch_size;
+				w_I_O[i][j].prev_dw = dw_current;
+				w_I_O[i][j].w += dw_current;
+			}
+			else{
+				w_I_O[i][j].w -= learning_rate * w_I_O[i][j].dw / (double) batch_size;
+			}
 			w_I_O[i][j].dw = 0;
 		}
 	}

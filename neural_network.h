@@ -17,6 +17,7 @@
 typedef struct weight_struct_t {
     double w; // weight
     double dw; // change in w to be applied
+	double prev_dw; // previous change in dw
 } weight_struct_t;
 
 // Weight matrices
