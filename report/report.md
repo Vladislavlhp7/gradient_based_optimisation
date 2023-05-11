@@ -66,7 +66,7 @@ Stochastic Gradient Descent is one of the most significant and widely used optim
 It is a variant of the Gradient Descent (GD) algorithm, which is used to find the local minimum of a function by iteratively moving in the direction of the negative gradient.
 However, the main difference is that SGD uses a random sample of the training data in order to compute the gradient, unlike the
 GD algorithm which is applied over the entire dataset - leading to high computational costs.
-In our work, we will be exploring the **on-line** (i.e., stochastic) and mini-batch SGD (where $m \ll N$, such that $m$ is the 
+In our work, we will be exploring the **on-line** (i.e., stochastic) and **mini-batch SGD** (where $m \ll N$, such that $m$ is the 
 size of the mini-batch, and $N$ is the size of the training dataset) variants of the algorithm.
 We can define more formally this optimisation method in Algorithm \ref{alg:sgd}, while the update rule is given by Eq. \ref{eq:sgd}.
 \begin{equation}
@@ -93,11 +93,70 @@ We can define more formally this optimisation method in Algorithm \ref{alg:sgd},
 \end{algorithm}
 
 We must further note a few key benefits of using an SGD over general GD:
+
 1. On-line (i.e., stochastic) learning requires a smaller step size (i.e., learning rate) to counteract inherent noise, 
     resulting in smoother but slower adaptation [@wilson2003generalinnefficiencybatchtraining]. 
     Despite the increased runtime, small batches offer a beneficial regularization effect and over time, noise averages out, 
     driving the weights towards the true gradient [@Goodfellow-et-al-2016].
+2. Large batch sizes exhibit a degradation in quality [@mishkin2017systematicconvolutionalneuralnetwork] and a low generalisation capability and are 
+    prone to getting stuck in local minima due to their convergence to sharp minimizers of the training function [@keskar2017largebatch].
 
+## Learning Rate {#sec:learning-rate}
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|c|}
+        \hline
+            Mean Loss & Test Acc & lr & Batch Size & Time (s) \\
+        \hline 
+            nan & 0.098 & 0.1 & 1 & 3533s \\
+            0.025 & 0.977 & 0.1 & 10 & 3268s \\
+            \textbf{0.017} & 0.976 & 0.1 & 100 & 3268s \\
+            0.027 & 0.977 & 0.01 & 1 & 3557s \\
+            \textbf{0.019} & 0.976 & 0.01 & 10 & 3338s \\
+            0.17 & 0.950 & 0.01 & 100 & 3301s \\
+            \textbf{0.019} & \textbf{0.978} & 0.001 & 1 & 3553s \\
+            0.16 & 0.952 & 0.001 & 10 & 3332s \\
+            0.53 & 0.872 & 0.001 & 100 & 3288s \\
+        \hline
+    \end{tabular}\label{tab:results}
+    \caption{SGD performance: Loss and Accuracy}
+\end{table}
+
+## Analytical Validation {#sec:analytical-validation}
+To validate the correctness of the provided analytical gradient calculation, we approximate the derivative using 
+three different finite-difference methods [@ford2015numerical]:
+
+1. Forward difference: $\frac{f(x + h) - f(x)}{h}$
+2. Backward difference: $\frac{f(x) - f(x - h)}{h}$
+3. Central difference: $\frac{f(x + h) - f(x - h)}{2h}$
+
+where we set the step size $h$ to $10^{-8}$.
+
+To due the significant computational cost of the all these methods (each takes ~1s per sample), 
+we only compute the numerical gradients for a single sample at the end of the first training epoch and compare them 
+to the analytical ones.
+We carry out our experiments using a learning rate of $\eta = 0.1$ and a mini-batch size of $m = 10$.
+The results shown in Figure \ref{fig:mean_rel_error} and Figure \ref{fig:rel_dist} indicate that the analytical and 
+numerical gradients differ by less than $3 \times 10^{-4}$% (central difference) on average, which goes to show that the
+analytical gradient calculation is correct.
+As expected the central difference method provides a better approximation and a lower truncation error than the forward
+and backward difference ones due to the fact that it is second-order accurate, while the others are first-order accurate.
+This is clearly visible from the lower mean relative error and the narrower distribution of the central difference method.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{charts/mean_rel_error.png}
+    \caption{Mean relative error of the finite-difference methods.}
+    \label{fig:mean_rel_error}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{charts/rel_dist.png}
+    \caption{Relative error distribution of the finite-difference methods.}
+    \label{fig:rel_dist}
+\end{figure}
 
 # Improving Convergence {#sec:improving-convergence}
 
