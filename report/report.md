@@ -163,7 +163,6 @@ From the experiments on both learning rates and batch sizes we reach the followi
     good balance between the two hyperparameters, achieving low average loss and high test accuracy. 
     It is also not unreasonable to claim that the learning rate and the batch size seem inversely correlated in terms of model performance.
 
-
 \begin{table}[ht]
     \centering
     \begin{tabular}{|c|c|c|c|c|c|}
@@ -323,7 +322,7 @@ a single solution, but rather oscillates around it - $97.8$% test accuracy, as s
         \textbf{0.015} & \textbf{0.978} & 0.001 & 10 & 0.9\\
         0.10 & 0.962 & 0.001 & 10 & 0.5\\
     \hline
-    \end{tabular}\label{tab:sgd_decay}
+    \end{tabular}\label{tab:sgd_momentum}
 \caption{SGD performance with momentum: Loss and Accuracy}
 \end{table}
 
@@ -340,6 +339,43 @@ albeit at the cost of a slightly lower test accuracy of $96.2$% (see Figure \ref
 \end{figure}
 
 ## Combined Approach {#sec:combined-approach}
+In this section we will explore the combined effect of learning rate decay and momentum on the SGD optimizer.
+This is a sensible strategy due to the complementary nature of the two techniques:
+
+1. momentum's accumulation of past gradients, allowing for a consistent direction of descent;
+2. learning rate decay enabling finer adjustments at the end of the training, which is useful for reaching the optimal solution;
+3. the combination of the two navigating through suboptimal loss regions with finer adjustments over the time;
+
+We experiment with the combined approach by fixing the momentum coefficient to $0.9$, 
+initial learning rate to $0.1$, and final learning rate to $0.001$.
+Once again, we encounter instability when the mini-batch has a size of $m=\{1,10\}$ (typical SGD issue, see Section \ref{sec:config-experiments}),
+but when the batch size is large enough (i.e., $m=100$), the model reaches a satisfactory test accuracy of $97.8$% (see Figure \ref{fig:combined}).
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{|c|c|c|c|}
+    \hline
+    Avg Loss & Test Acc & m\\
+    \hline
+        nan & 0.098 & 1 \\
+        nan & 0.098 & 10 \\
+        \textbf{0.027} & \textbf{0.978} & 100 \\
+    \hline
+    \end{tabular}\label{tab:sgd_combined}
+    \caption{SGD Combined performance: Loss and Accuracy}
+\end{table}
+
+However, as we can see from the figure below, the test accuracy curve is still quite erratic, with sudden drops and a lack of smoothness.
+We attribute these results to the fact that we have not done a thorough hyperparameter search for the combined approach,
+across initial and final learning rates and momentum coefficient.
+However, we hypothesise that this strategy is very promising and could be further explored in future work.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.49\textwidth]{charts/combined.png}
+    \caption{SGD Combined: Loss and Accuracy}
+    \label{fig:combined}
+\end{figure}
 
 
 
@@ -384,10 +420,70 @@ We further note three key aspects of AdaGrad:
    To address this, two algorithm extensions were proposed, namely: RMSProp [@tieleman2012lecture] and Adam [@kingma2017adam], that
    attempt to resolve this issue by introducing a decaying average of the historical squared gradients $E[g^2]_t$.
 
+As for our experiments, we arrive at similar conclusions as before, namely that AdaGrad also suffers from 
+oscillating loss, although it consistently reaches higher test accuracies ($\leq 98$%) than SGD.
+A peculiar observation can be made when we set the learning rate to $0.01$ and the batch size to $100$,
+where the loss becomes `nan` (i.e., not a number) after the first epoch (see table below).
+While we do not have a definitive explanation for this, we suspect that it is caused by the **rapid learning rate decay** issue mentioned above.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{|c|c|c|c|}
+    \hline
+    Avg Loss & Test Acc & $\eta$ & m\\
+    \hline
+    0.17 & 0.951 & 0.001 & 1 \\
+    0.06 & 0.971 & 0.001 & 10 \\
+    0.02 & 0.982 & 0.001 & 100 \\
+    0.011 & 0.98 & 0.01 & 1 \\
+    \textbf{0.003} & \textbf{0.98} & 0.01 & 10 \\
+    nan & 0.098 & 0.01 & 100 \\
+    \hline
+    \end{tabular}\label{tab:sgd_decay}
+    \caption{SGD performance with AdaGrad: Loss and Accuracy}
+\end{table}
+
+Therefore, for a more comprehensive analysis we will now compare the performance of AdaGrad with the different SGD variants discussed in the previous sections.
+If we fix the hyperparameters to $\eta=0.01$ and $m=10$ (except for the learning rate decay variants),
+we can observe that SGD + lr decay outperforms all other methods in terms of loss and test accuracy with a 
+slight advantage over the AdaGrad optimizer.
+We hypothesise that this is due to the nature of our particular image classification task and the dataset associated with it.
+Perhaps, accumulation of historical gradients (momentum) is not as useful in this scenario, or simply we have not found the optimal hyperparameters for it.
+
+Also, all algorithms required a long amount of time to complete the $10$ epochs of training with the combined approach being the slowest.
+Nevertheless, we must note that some of our experiments were done simultaneously on our four local CPU cores (1.7 GHz Quad-Core Intel Core i7).
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{|c|c|c|c|}
+    \hline
+    Method & Avg Loss & Test Acc & Time (s)\\
+    \hline
+    AdaGrad & 0.003 & 0.98 &  3300s \\
+    SGD & 0.019 & 0.976 & 3300s \\
+     +lr decay & \textbf{0.001} & \textbf{0.984} &  2600s \\
+     +momentum & 0.02 & 0.975 & 2600s \\
+    combined & 0.03 & 0.978 & 3500s \\
+    \hline
+    \end{tabular}\label{tab:sgd_comparison}
+    \caption{SGD performance with AdaGrad: Loss and Accuracy}
+\end{table}
+
 
 # Conclusion {#sec:conclusion}
+To conclude, in this work we have implemented and explored five optimization algorithms for image classification:
+SGD, SGD with momentum, SGD with learning rate decay, SGD combined and AdaGrad.
+We have discussed the key aspects of each algorithm and their advantages/disadvantages, while also evaluating 
+the analytical solution with three finite difference approximations: forward, backward and central difference.
+Finally, we have performed a series of experiments to compare the performance of the different methods and
+have concluded that **SGD with learning rate decay is the best performing approach** for the optimization of the 
+provided Artificial Neural Network classifier model.
+In the future, we would like to explore other optimization algorithms such as Adam and RMSProp, as well as carry out 
+a more comprehensive hyperparameter search to find the optimal values for each method.
 
-\begin{figure}[h]
+
+
+\begin{figure}[ht]
     \centering
     \begin{subfigure}[b]{0.5\textwidth}
     \caption{Batch size (m) = 1}
