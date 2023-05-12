@@ -15,6 +15,8 @@ header-includes:
 - \usepackage{algorithm} 
 - \usepackage{algorithmicx} 
 - \usepackage{algpseudocode}
+- \usepackage{subcaption}
+- \usepackage{caption}
 graphics: yes
 fontsize: 10pt
 geometry:
@@ -101,7 +103,65 @@ We must further note a few key benefits of using an SGD over general GD:
 2. Large batch sizes exhibit a degradation in quality [@mishkin2017systematicconvolutionalneuralnetwork] and a low generalisation capability and are 
     prone to getting stuck in local minima due to their convergence to sharp minimizers of the training function [@keskar2017largebatch].
 
-## Learning Rate {#sec:learning-rate}
+## Learning Rate Experiments {#sec:learning-rate}
+We experimented with different hyperparameters for the SGD algorithm, in order to find the optimal configuration for our ANN classifier:
+
+1.**Learning rate**: The learning rate $\eta$ is the step size of the gradient descent algorithm, and is the most important hyper-parameter [@Goodfellow-et-al-2016].
+    Setting it to larger values risks rapid changes and overshooting the minimum, while converging to a suboptimal solution.
+    On the other hand, a smaller learning rate requires more training epochs to converge, and is more likely to get stuck in a local minimum.
+    In our work on SGD, we experimented with the following values $\eta = \{0.1, 0.01, 0.001\}$.
+
+2.**Batch size**: The batch size $m$ is the number of training samples used to compute the gradient at each iteration.
+    The mini-batch SGD is said to follow the gradient of the true generalization error [@Goodfellow-et-al-2016]
+    by computing an unbiased estimate (implying data is sampled randomly).
+    When $m = 1$, the algorithm is called **on-line** (i.e., stochastic) learning, whereas for $m = N$ it is called **batch** learning.
+    In our work, we experimented with the following batch size values $m = \{1, 10, 100\}$.
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.5\textwidth]{charts/1.3.png}
+    \caption{Loss and test accuracy for lr=0.1 and $m = 10$.}
+    \label{fig: 1.3}
+\end{figure}
+
+
+From the experiments on both learning rates and batch sizes we reach the following conclusions:
+
+1. **Instability for $lr=0.1, m=1$**: From Fig. \ref{fig: batch-size-1-acc} it becomes clear that a combination of
+    a large learning rate and a small batch size leads to a very unstable optimization process, with a nan loss value and 
+    a constant test accuracy of $0.098$ (i.e., random guessing) as visible in Table \ref{tab:sgd}. These results are expected due to 
+    the erratic stochastic updates, and the high variance in the gradient estimates [@Goodfellow-et-al-2016]. In contrast,
+    just by decreasing the learning rate to $\eta = 0.01$ or by increasing the batch size to $m = 10$ we can achieve a stable and 
+    an accurate solution ($\geq 70$%).
+2. **Slow convergence for large $m$**: While a larger batch size leads to a more stable learning because of the averaging effect,
+    it can suffer from a lack of generalization caused by the convergence to sharp minimizers and the inability to escape them post factum [@keskar2017largebatch].
+    This is evident for $(lr=0.001, m=10)$ and $(lr=0.001, m=100)$ from Fig. \ref{fig: batch-size-10-acc} and \ref{fig: batch-size-100-acc}, respectively,
+    where the test accuracy convergence slows down over all 10 epochs.
+
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}[b]{0.5\textwidth}
+        \caption{Batch size (m) = 1}
+        \includegraphics[width=\textwidth]{charts/acc_sgd_m=1.png}
+        \label{fig: batch-size-1-acc}
+    \end{subfigure}
+    \vfill
+    \begin{subfigure}[b]{0.5\textwidth}
+        \caption{Batch size (m) = 10}
+        \includegraphics[width=\textwidth]{charts/acc_sgd_m=10.png}
+        \label{fig: batch-size-10-acc}
+    \end{subfigure}
+    \vfill
+    \begin{subfigure}[b]{0.5\textwidth}
+        \caption{Batch size (m) = 100}
+        \includegraphics[width=\textwidth]{charts/acc_sgd_m=100.png}
+        \label{fig: batch-size-100-acc}
+    \end{subfigure}
+    \caption{Test accuracy for different learning rates and batch sizes.}
+    \label{fig: learning-rate-acc}
+\end{figure}
+
 
 \begin{table}[ht]
     \centering
@@ -119,7 +179,7 @@ We must further note a few key benefits of using an SGD over general GD:
             0.16 & 0.952 & 0.001 & 10 & 3332s \\
             0.53 & 0.872 & 0.001 & 100 & 3288s \\
         \hline
-    \end{tabular}\label{tab:results}
+    \end{tabular}\label{tab:sgd}
     \caption{SGD performance: Loss and Accuracy}
 \end{table}
 
@@ -133,7 +193,7 @@ three different finite-difference methods [@ford2015numerical]:
 
 where we set the step size $h$ to $10^{-8}$.
 
-To due the significant computational cost of the all these methods (each takes ~1s per sample), 
+Due to the significant computational cost of the all these methods (each takes ~1s per sample), 
 we only compute the numerical gradients for a single sample at the end of the first training epoch and compare them 
 to the analytical ones.
 We carry out our experiments using a learning rate of $\eta = 0.1$ and a mini-batch size of $m = 10$.
