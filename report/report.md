@@ -136,8 +136,8 @@ Additionally, while this hyperparameter configuration somewhat **exhibits a zig-
 common to stochastic GD approaches [@wilson2003generalinnefficiencybatchtraining], the oscillations are limited in magnitude,
 but we cannot yet confirm if the model has reached the global optimum.
 To address this, we rerun this experiment over 20 epochs (Fig \ref{fig: oscillations}) and find that the model does not further improve the performance,
-while the zig-zagging effect is now not only present but also more pronounced between the 10th and 20th epochs - implying that 
-the step size is too large to find the global optimum.
+while the zig-zagging effect is now not only present but also more pronounced between the 10th and 20th epochs - **implying that 
+the step size is too large to find the global optimum**.
 
 \begin{figure}[h]
 \centering
@@ -280,7 +280,7 @@ to demonstrate the effect of the learning rate decay on the zigzag effect common
 
 Further reducing the final learning rate $\eta_{N}$ to $0.00001$ eliminates the zigzag effect completely towards the end of the training, as shown in 
 Figure \ref{fig:decay_10_00001}, which proves that this decay technique indeed helps the model converge faster and more 
-smoothly to the optimal solution - test accuracy of $98.4$%.
+smoothly to the **optimal solution - test accuracy of $98.4$%**.
 
 \begin{figure}[ht]
     \centering
@@ -290,6 +290,57 @@ smoothly to the optimal solution - test accuracy of $98.4$%.
 \end{figure}
 
 ## Momentum {#sec:momentum}
+In this section we explore the application of Momentum to SGD, which is a widely-used technique in training neural networks [@pmlr-v28-sutskever13].
+The idea behind it is to accumulate previous gradients and continue moving in a consistent direction; it also has a smoothing effect on the landscape of the loss.
+More formally, we define the momentum as follows:
+
+\begin{equation}
+    \begin{split}
+        v_{t} &= \alpha v_{t-1} + \frac{\eta}{m} \sum_{i=1}^{m} \nabla L_i(x_i, w) \\
+        w &= w - v_{t}
+    \end{split}
+    \label{eq:momentum}
+\end{equation}
+where $v_t$ represents the velocity or momentum at time $t$, $\alpha$ is the momentum decay rate, 
+$v_{t-1}$ is the velocity at the previous time step, and $w$ is updated by subtracting the velocity $v_t$.
+
+Similarly to previous experiments, we test the momentum with a range of learning rates and batch sizes to find the optimal configuration.
+However, once again we face the same problem as in Section \ref{sec:config-experiments} - the model does not converge to 
+a single solution, but rather oscillates around it - $97.8$% test accuracy, as shown in the table below and also Figure \ref{fig:momentum_10_0}.
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|}
+    \hline
+    Avg Loss & Test Acc & $\eta$ & m & $\alpha$\\
+    \hline
+        nan & 0.098 & 0.1 & 1 & 0.9\\
+        2.30 & 0.098 & 0.1 & 10 & 0.9\\
+        0.03 & 0.977 & 0.1 & 100 & 0.9\\
+        2.30 & 0.098 & 0.01 & 1 & 0.9\\
+        0.02 & 0.975 & 0.01 & 10 & 0.9\\
+        0.023 & 0.978 & 0.001 & 1 & 0.9\\
+        \textbf{0.015} & \textbf{0.978} & 0.001 & 10 & 0.9\\
+        0.10 & 0.962 & 0.001 & 10 & 0.5\\
+    \hline
+    \end{tabular}\label{tab:sgd_decay}
+\caption{SGD performance with momentum: Loss and Accuracy}
+\end{table}
+
+Nevertheless, an interesting observation we can make is that relaxing the alpha parameter (i.e., the momentum coefficient) to $0.5$,
+we achieve a significantly smoother test accuracy curve in comparison to when we use the default value of $0.9$.
+This is caused by the greater damping effect on the erratic curve oscillations, which produce a more stable gradient descent,
+albeit at the cost of a slightly lower test accuracy of $96.2$% (see Figure \ref{fig:momentum_10_0}).
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.49\textwidth]{charts/momentum_10_0_2.png}
+    \caption{SGD with different momentum ($\eta=0.001$, $m=10$): Loss and Accuracy}
+    \label{fig:momentum_10_0}
+\end{figure}
+
+## Combined Approach {#sec:combined-approach}
+
 
 
 # Adaptive Learning {#sec:adaptive-learning}
@@ -332,7 +383,6 @@ We further note three key aspects of AdaGrad:
    effectively shrinking the learning rate ($\eta$) on each dimension [@zeiler2012adadelta]. Eventually, $\eta$ becomes infinitesimally small, and the learning stagnates.
    To address this, two algorithm extensions were proposed, namely: RMSProp [@tieleman2012lecture] and Adam [@kingma2017adam], that
    attempt to resolve this issue by introducing a decaying average of the historical squared gradients $E[g^2]_t$.
-
 
 
 # Conclusion {#sec:conclusion}
