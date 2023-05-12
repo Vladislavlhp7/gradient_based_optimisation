@@ -18,7 +18,7 @@ header-includes:
 - \usepackage{subcaption}
 - \usepackage{caption}
 graphics: yes
-fontsize: 10pt
+fontsize: 12pt
 geometry:
 - top=20mm
 - bottom=20mm
@@ -117,6 +117,13 @@ We experimented with different hyperparameters for the SGD algorithm, in order t
     When $m = 1$, the algorithm is called **on-line** (i.e., stochastic) learning, whereas for $m = N$ it is called **batch** learning.
     In our work, we experimented with the following batch size values $m = \{1, 10, 100\}$.
 
+As requested, we track the convergence of the training process by plotting the loss and test accuracy over 
+all epochs for learning rates $\eta = 0.1$ and batch sizes $m = 10$ in Fig. \ref{fig: 1.3}. 
+We can see that there is a **rapid fall in the loss** function, and a corresponding **jump in the test accuracy** 
+in the first epoch, which is caused by the large learning rate [@Goodfellow-et-al-2016]. 
+Furthermore, the training process is **stable** with a monotonically decreasing loss function, which demonstrates the theoretical 
+correctness of the SGD implementation. Regarding the **generalization capability** of the model, we can see that the test accuracy
+**does not suffer from over-fitting**, as it is constantly increasing over the epochs, and reaches a value of $98$% at the last (i.e., tenth) epoch.
 
 \begin{figure}[h]
     \centering
@@ -125,6 +132,19 @@ We experimented with different hyperparameters for the SGD algorithm, in order t
     \label{fig: 1.3}
 \end{figure}
 
+Additionally, while this hyperparameter configuration somewhat **exhibits a zig-zagging behaviour** from Epoch 1 onwards, which is
+common to stochastic GD approaches [@wilson2003generalinnefficiencybatchtraining], the oscillations are limited in magnitude,
+but we cannot yet confirm if the model has reached the global optimum.
+To address this, we rerun this experiment over 20 epochs (Fig \ref{fig: oscillations}) and find that the model does not further improve the performance,
+while the zig-zagging effect is now not only present but also more pronounced between the 10th and 20th epochs - implying that 
+the step size is too large to find the global optimum.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{charts/oscillations.png}
+\caption{Test accuracy for lr=0.1 and $m = 10$ over 20 epochs.}
+\label{fig: oscillations}
+\end{figure}
 
 From the experiments on both learning rates and batch sizes we reach the following conclusions:
 
@@ -203,6 +223,8 @@ analytical gradient calculation is correct.
 As expected the central difference method provides a better approximation and a lower truncation error than the forward
 and backward difference ones due to the fact that it is second-order accurate, while the others are first-order accurate.
 This is clearly visible from the lower mean relative error and the narrower distribution of the central difference method.
+And while these results demonstrate our trust in the analytical solution, we note that the numerical algorithms are too 
+computationally expensive to be used in practice over the range of all training data.
 
 \begin{figure}[h]
     \centering
@@ -219,6 +241,27 @@ This is clearly visible from the lower mean relative error and the narrower dist
 \end{figure}
 
 # Improving Convergence {#sec:improving-convergence}
+In order to counteract the zig-zagging effect of the large learning rate, but still maintain fast convergence, we will explore
+two different techniques: learning rate decay and momentum.
+
+## Learning Rate Decay {#sec:learning-rate-decay}
+Learning rate decay is a common technique often useful in practice [@wilson2003generalinnefficiencybatchtraining] that 
+makes more aggressive steps at the beginning and then gradually decrease the learning rate over time, 
+allowing the model to make larger updates initially, followed by smaller and more fine-grained ones towards the end.
+More formally, we define the learning rate decay as follows:
+\begin{equation}
+    \eta_{k} = \eta_{0}(1 - \alpha) + \alpha \eta_{N}, \quad \text{where} \quad \alpha = \frac{k}{N}
+    \label{eq:learning-rate-decay}
+\end{equation}
+where $\eta_{0}$ is the initial learning rate, $\eta_{N}$ is the final learning rate, $k$ is the current epoch, and $N$ is the total number of epochs.
+
+Some researchers claim that using learning rate decay is equivalent to increasing the batch size [@smith2018dontdecay]
+in terms of model performance, where the latter leads to significantly fewer parameter updates
+(i.e., improved parallelism and shorter training times).
+
+
+
+## Momentum {#sec:momentum}
 
 # Adaptive Learning {#sec:adaptive-learning}
 
