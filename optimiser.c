@@ -25,12 +25,14 @@ unsigned int forward_differencing = 0;
 unsigned int backward_differencing = 0;
 unsigned int central_differencing = 0;
 
-unsigned int adaptive_learning_rate = 0;
+unsigned int adaptive_learning_rate = 1;
+double learning_rate_0 = 0.01;
+double learning_rate_N = 0.001;
+
 unsigned int use_adagrad = 0;
+
 unsigned int use_momentum = 0;
 double momentum = 0.9;
-double learning_rate_0 = 0.1;
-double learning_rate_N = 0.001;
 
 double** accumulated_gradients_L3_LO;
 double** accumulated_gradients_L2_L3;
@@ -103,8 +105,8 @@ void run_optimisation(void){
 
 	// make an optimization file based on learning rate and batch size
 	char optimization_filename[50], validation_filename[50];
-	sprintf(optimization_filename, "data/training_%f_%d%d%d.txt", learning_rate, batch_size, adaptive_learning_rate, use_adagrad);
-	sprintf(validation_filename, "data/validation_%f_%d%d%d.txt", learning_rate, batch_size, adaptive_learning_rate, use_adagrad);
+	sprintf(optimization_filename, "data/training_%f_%d%d%d%d.txt", learning_rate, batch_size, adaptive_learning_rate, use_adagrad, use_momentum);
+	sprintf(validation_filename, "data/validation_%f_%d%d%d%d.txt", learning_rate, batch_size, adaptive_learning_rate, use_adagrad, use_momentum);
 	FILE *train_f = fopen(optimization_filename, "w");
 	FILE *valid_f;
 	if(forward_differencing || backward_differencing || central_differencing){

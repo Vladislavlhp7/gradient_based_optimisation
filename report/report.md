@@ -18,7 +18,7 @@ header-includes:
 - \usepackage{subcaption}
 - \usepackage{caption}
 graphics: yes
-fontsize: 12pt
+fontsize: 11pt
 geometry:
 - top=20mm
 - bottom=20mm
@@ -183,6 +183,28 @@ From the experiments on both learning rates and batch sizes we reach the followi
     \caption{SGD performance: Loss and Accuracy}
 \end{table}
 
+\begin{figure}[ht]
+    \centering
+    \begin{subfigure}[b]{0.42\textwidth}
+        \caption{Batch size (m) = 1}
+        \includegraphics[width=\textwidth]{charts/acc_sgd_m=1.png}
+    \label{fig: batch-size-1-acc}
+    \end{subfigure}
+\vfill
+    \begin{subfigure}[b]{0.42\textwidth}
+        \caption{Batch size (m) = 10}
+        \includegraphics[width=\textwidth]{charts/acc_sgd_m=10.png}
+        \label{fig: batch-size-10-acc}
+    \end{subfigure}
+\vfill
+    \begin{subfigure}[b]{0.42\textwidth}
+        \caption{Batch size (m) = 100}
+        \includegraphics[width=\textwidth]{charts/acc_sgd_m=100.png}
+        \label{fig: batch-size-100-acc}
+    \end{subfigure}
+\caption{Test accuracy for different learning rates and batch sizes.}
+\label{fig: learning-rate-acc}
+\end{figure}
 ## Analytical Validation {#sec:analytical-validation}
 To validate the correctness of the provided analytical gradient calculation, we approximate the derivative using 
 three different finite-difference methods [@ford2015numerical]:
@@ -377,8 +399,6 @@ However, we hypothesise that this strategy is very promising and could be furthe
     \label{fig:combined}
 \end{figure}
 
-
-
 # Adaptive Learning {#sec:adaptive-learning}
 In this section we will explore the AdaGrad optimizer [@hoffer2017adagrad], defined in Algorithm \ref{alg:adagrad}.
 The main innovation of this technique is that it introduces individual adaptive learning rates ($\eta$) for each model weight, 
@@ -442,7 +462,6 @@ While we do not have a definitive explanation for this, we suspect that it is ca
     \end{tabular}\label{tab:sgd_decay}
     \caption{SGD performance with AdaGrad: Loss and Accuracy}
 \end{table}
-
 Therefore, for a more comprehensive analysis we will now compare the performance of AdaGrad with the different SGD variants discussed in the previous sections.
 If we fix the hyperparameters to $\eta=0.01$ and $m=10$ (except for the learning rate decay variants),
 we can observe that SGD + lr decay outperforms all other methods in terms of loss and test accuracy with a 
@@ -469,7 +488,6 @@ Nevertheless, we must note that some of our experiments were done simultaneously
     \caption{SGD performance with AdaGrad: Loss and Accuracy}
 \end{table}
 
-
 # Conclusion {#sec:conclusion}
 To conclude, in this work we have implemented and explored five optimization algorithms for image classification:
 SGD, SGD with momentum, SGD with learning rate decay, SGD combined and AdaGrad.
@@ -481,27 +499,4 @@ provided Artificial Neural Network classifier model.
 In the future, we would like to explore other optimization algorithms such as Adam and RMSProp, as well as carry out 
 a more comprehensive hyperparameter search to find the optimal values for each method.
 
-
-
-\begin{figure}[ht]
-    \centering
-    \begin{subfigure}[b]{0.5\textwidth}
-    \caption{Batch size (m) = 1}
-    \includegraphics[width=\textwidth]{charts/acc_sgd_m=1.png}
-    \label{fig: batch-size-1-acc}
-    \end{subfigure}
-    \vfill
-    \begin{subfigure}[b]{0.5\textwidth}
-    \caption{Batch size (m) = 10}
-    \includegraphics[width=\textwidth]{charts/acc_sgd_m=10.png}
-    \label{fig: batch-size-10-acc}
-    \end{subfigure}
-    \vfill
-    \begin{subfigure}[b]{0.5\textwidth}
-    \caption{Batch size (m) = 100}
-    \includegraphics[width=\textwidth]{charts/acc_sgd_m=100.png}
-    \label{fig: batch-size-100-acc}
-    \end{subfigure}
-    \caption{Test accuracy for different learning rates and batch sizes.}
-    \label{fig: learning-rate-acc}
-\end{figure}
+# Bibliography {#sec:bibliography}
