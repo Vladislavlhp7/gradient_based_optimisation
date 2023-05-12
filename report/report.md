@@ -153,7 +153,7 @@ From the experiments on both learning rates and batch sizes we reach the followi
     a constant test accuracy of $0.098$ (i.e., random guessing) as visible in Table \ref{tab:sgd}. These results are expected due to 
     the erratic stochastic updates, and the high variance in the gradient estimates [@Goodfellow-et-al-2016]. In contrast,
     just by decreasing the learning rate to $\eta = 0.01$ or by increasing the batch size to $m = 10$ we can achieve a stable and 
-    an accurate solution ($\geq 70$%).
+    an accurate solution ($\geq 95$%).
 2. **Slow convergence for large $m$**: While a larger batch size leads to a more stable learning because of the averaging effect,
     it can suffer from a lack of generalization caused by the convergence to sharp minimizers and the inability to escape them post factum [@keskar2017largebatch].
     This is evident for $(lr=0.001, m=10)$ and $(lr=0.001, m=100)$ from Fig. \ref{fig: batch-size-10-acc} and \ref{fig: batch-size-100-acc}, respectively,
@@ -161,51 +161,8 @@ From the experiments on both learning rates and batch sizes we reach the followi
 3. **Striking a good balance**: The optimal SGD solution depends on the trade-off between the learning rate and the batch size.
     However, the following configurations: $(lr=0.1, m=100)$, $(lr=0.01, m=10)$, and $(lr=0.001, m=1)$ seem to strike a 
     good balance between the two hyperparameters, achieving low average loss and high test accuracy. 
-    It is also not unreasonable to claim that the learning rate and the batch size seem inversely correlated.
+    It is also not unreasonable to claim that the learning rate and the batch size seem inversely correlated in terms of model performance.
 
-\begin{figure}[h]
-    \centering
-    \begin{subfigure}[b]{0.5\textwidth}
-        \caption{Batch size (m) = 1}
-        \includegraphics[width=\textwidth]{charts/acc_sgd_m=1.png}
-        \label{fig: batch-size-1-acc}
-    \end{subfigure}
-    \vfill
-    \begin{subfigure}[b]{0.5\textwidth}
-        \caption{Batch size (m) = 10}
-        \includegraphics[width=\textwidth]{charts/acc_sgd_m=10.png}
-        \label{fig: batch-size-10-acc}
-    \end{subfigure}
-    \vfill
-    \begin{subfigure}[b]{0.5\textwidth}
-        \caption{Batch size (m) = 100}
-        \includegraphics[width=\textwidth]{charts/acc_sgd_m=100.png}
-        \label{fig: batch-size-100-acc}
-    \end{subfigure}
-    \caption{Test accuracy for different learning rates and batch sizes.}
-    \label{fig: learning-rate-acc}
-\end{figure}
-
-
-\begin{table}[ht]
-    \centering
-    \begin{tabular}{|c|c|c|c|c|c|}
-        \hline
-            Avg Loss & Test Acc & $\eta$ & m & Time (s) \\
-        \hline 
-            nan & 0.098 & 0.1 & 1 & 3533s \\
-            0.025 & 0.977 & 0.1 & 10 & 3268s \\
-            \textbf{0.017} & 0.976 & 0.1 & 100 & 3268s \\
-            0.027 & 0.977 & 0.01 & 1 & 3557s \\
-            \textbf{0.019} & 0.976 & 0.01 & 10 & 3338s \\
-            0.17 & 0.950 & 0.01 & 100 & 3301s \\
-            \textbf{0.019} & \textbf{0.978} & 0.001 & 1 & 3553s \\
-            0.16 & 0.952 & 0.001 & 10 & 3332s \\
-            0.53 & 0.872 & 0.001 & 100 & 3288s \\
-        \hline
-    \end{tabular}\label{tab:sgd}
-    \caption{SGD performance: Loss and Accuracy}
-\end{table}
 
 ## Analytical Validation {#sec:analytical-validation}
 To validate the correctness of the provided analytical gradient calculation, we approximate the derivative using 
@@ -263,16 +220,16 @@ Some researchers even claim that using learning rate decay is equivalent to incr
 in terms of model performance, where the latter leads to significantly fewer parameter updates
 (i.e., improved parallelism and shorter training times).
 
-Throughout our experiments we will fix the initial and the final learning rates to $\eta_{0} = 0.1$ and $\eta_{N} = 0.001$ respectively,
-and we will vary the number of batches per epoch $m$ from 1 to 10 to 100.
+Nevertheless, throughout our experiments we will fix the initial and the final learning rates to $\eta_{0} = 0.1$ and $\eta_{N} = 0.001$ respectively,
+and we will vary the number of batches per epoch $m$ from 1 to 10, and to 100.
 We argue that it is reasonable to use a more aggressive learning rate at the beginning of the training process to explore the parameter space, 
 and then slowly calibrate it so as not to overshoot the optimal solution which was the case for SGD in Section \ref{sec:config-experiments}.
 
 The results shown in Table \ref{tab:sgd_decay} indicate that:
 
 1. the decay technique improves the final average loss and test accuracy for $m=10$ because of the aggressive initial learning rate and the batch averaging effect;
-2. this method also suffers from the shortcomings of SGD from Section \ref{sec:config-experiments} when $m=1$ (i.e., on-line learning).
-    We believe this is once again caused by the erratic high-variance gradient updates.  
+2. however, it also suffers from the SGD's shortcomings from Section \ref{sec:config-experiments} when $m=1$ (i.e., on-line learning), 
+   which we believe is once again caused by the erratic high-variance gradient updates.
 
 \begin{table}[ht]
     \centering
@@ -301,6 +258,90 @@ We observe that this technique indeed helps the model converge faster and more s
 
 ## Momentum {#sec:momentum}
 
+
 # Adaptive Learning {#sec:adaptive-learning}
+In this section we will explore the AdaGrad optimizer [@hoffer2017adagrad], defined in Algorithm \ref{alg:adagrad}.
+The main innovation of this technique is that it introduces individual adaptive learning rates ($\eta$) for each model weight, 
+whereas before $\eta$ was a global hyperparameter set uniformly for all parameters. 
+This is possible through the accumulation of squared historical gradients per parameter $w_i$ over time, 
+which are then used for the scaling of $w_i$'s learning rate; more formally it can be described as follows:
+
+\begin{algorithm}[h]
+    \caption{AdaGrad}
+    \begin{algorithmic}[1]
+        \Require Learning rate $\eta$
+        \Require Initial model parameters $w$
+        \Require Small constant $\epsilon$ (e.g., $10^{-8}$)
+        \Ensure Optimized model parameters $w$
+        \State Initialize $G_0$ as an empty diagonal matrix of the same size as $w$
+        \While{stopping criteria not met}
+        \State Compute gradient $g_t = \nabla J(w)$ at current parameters $w$
+        \State Accumulate squared gradient: $G_t = G_{t-1} + g_t^2$
+        \State Compute update: $\Delta w = - \frac{\eta}{\sqrt{G_t + \epsilon}} \odot g_t$
+        \State Update parameters: $w = w + \Delta w$
+        \EndWhile
+        \State \Return Optimized model parameters $w$
+    \end{algorithmic}
+    \label{alg:adagrad}
+\end{algorithm}
+where $\odot$ denotes the element-wise product of the two vectors, while $\nabla J(w)$ is the gradient of the loss function
+$J(w)$ with respect to the model parameters $w$. The $\epsilon$ (usually set to $10^{-8}$) term is further added to avoid division by zero.
+
+We further note three key aspects of AdaGrad:
+
+1. **Parameter-Specific Learning Rates**: AdaGrad adapts the learning rate so that infrequent parameters (i.e., rare features)
+   receive larger updates, whereas the frequent ones (i.e., common features) receive smaller updates.
+   This is especially useful in computer vision tasks (e.g., image classification) with frequent or repetitive image patterns (e.g., background, main body of digit).
+2. **No Manual Learning Rate Tuning**: AdaGrad eliminates the need to manually tune the learning rate by
+   allowing it to adaptively tune for each parameter during training.
+3. **Rapid Learning Rate Decay**: One issue with AdaGrad is that the learning rate monotonically decreases during training,
+   which may cause premature convergence. To address this, two algorithm extensions were proposed, namely: RMSProp [@tieleman2012lecture] and Adam [@kingma2017adam], that
+   attempt to resolve this issue by introducing a decaying average of the historical squared gradients $E[g^2]_t$.
+
+
 
 # Conclusion {#sec:conclusion}
+
+\begin{figure}[h]
+    \centering
+    \begin{subfigure}[b]{0.5\textwidth}
+    \caption{Batch size (m) = 1}
+    \includegraphics[width=\textwidth]{charts/acc_sgd_m=1.png}
+    \label{fig: batch-size-1-acc}
+    \end{subfigure}
+    \vfill
+    \begin{subfigure}[b]{0.5\textwidth}
+    \caption{Batch size (m) = 10}
+    \includegraphics[width=\textwidth]{charts/acc_sgd_m=10.png}
+    \label{fig: batch-size-10-acc}
+    \end{subfigure}
+    \vfill
+    \begin{subfigure}[b]{0.5\textwidth}
+    \caption{Batch size (m) = 100}
+    \includegraphics[width=\textwidth]{charts/acc_sgd_m=100.png}
+    \label{fig: batch-size-100-acc}
+    \end{subfigure}
+    \caption{Test accuracy for different learning rates and batch sizes.}
+    \label{fig: learning-rate-acc}
+\end{figure}
+
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|c|}
+        \hline
+        Avg Loss & Test Acc & $\eta$ & m & Time (s) \\
+        \hline
+        nan & 0.098 & 0.1 & 1 & 3533s \\
+        0.025 & 0.977 & 0.1 & 10 & 3268s \\
+        \textbf{0.017} & 0.976 & 0.1 & 100 & 3268s \\
+        0.027 & 0.977 & 0.01 & 1 & 3557s \\
+        \textbf{0.019} & 0.976 & 0.01 & 10 & 3338s \\
+        0.17 & 0.950 & 0.01 & 100 & 3301s \\
+        \textbf{0.019} & \textbf{0.978} & 0.001 & 1 & 3553s \\
+        0.16 & 0.952 & 0.001 & 10 & 3332s \\
+        0.53 & 0.872 & 0.001 & 100 & 3288s \\
+        \hline
+    \end{tabular}\label{tab:sgd}
+    \caption{SGD performance: Loss and Accuracy}
+\end{table}
