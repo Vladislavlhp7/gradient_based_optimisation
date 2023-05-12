@@ -150,7 +150,7 @@ From the experiments on both learning rates and batch sizes we reach the followi
 
 1. **Instability for $lr=0.1, m=1$**: From Fig. \ref{fig: batch-size-1-acc} it becomes clear that a combination of
     a large learning rate and a small batch size leads to a very unstable optimization process, with a nan loss value and 
-    a constant test accuracy of $0.098$ (i.e., random guessing) as visible in Table @tab:sgd. These results are expected due to 
+    a constant test accuracy of $0.098$ (i.e., random guessing) as visible in the table below. These results are expected due to 
     the erratic stochastic updates, and the high variance in the gradient estimates [@Goodfellow-et-al-2016]. In contrast,
     just by decreasing the learning rate to $\eta = 0.01$ or by increasing the batch size to $m = 10$ we can achieve a stable and 
     an accurate solution ($\geq 95$%).
@@ -163,6 +163,26 @@ From the experiments on both learning rates and batch sizes we reach the followi
     good balance between the two hyperparameters, achieving low average loss and high test accuracy. 
     It is also not unreasonable to claim that the learning rate and the batch size seem inversely correlated in terms of model performance.
 
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|c|}
+    \hline
+    Avg Loss & Test Acc & $\eta$ & m & Time (s) \\
+    \hline
+    nan & 0.098 & 0.1 & 1 & 3533s \\
+    0.025 & 0.977 & 0.1 & 10 & 3268s \\
+    \textbf{0.017} & 0.976 & 0.1 & 100 & 3268s \\
+    0.027 & 0.977 & 0.01 & 1 & 3557s \\
+    \textbf{0.019} & 0.976 & 0.01 & 10 & 3338s \\
+    0.17 & 0.950 & 0.01 & 100 & 3301s \\
+    \textbf{0.019} & \textbf{0.978} & 0.001 & 1 & 3553s \\
+    0.16 & 0.952 & 0.001 & 10 & 3332s \\
+    0.53 & 0.872 & 0.001 & 100 & 3288s \\
+    \hline
+    \end{tabular}\label{tab:sgd}
+    \caption{SGD performance: Loss and Accuracy}
+\end{table}
 
 ## Analytical Validation {#sec:analytical-validation}
 To validate the correctness of the provided analytical gradient calculation, we approximate the derivative using 
@@ -225,7 +245,7 @@ and we vary the number of batches per epoch $m=\{1, 10, 100\}$.
 We argue that it is reasonable to use a more aggressive learning rate at the beginning of the training process to explore the parameter space, 
 and then slowly calibrate it so as not to overshoot the optimal solution which was the case for SGD in Section \ref{sec:config-experiments}.
 
-The results shown in Table @tab:sgd_decay indicate that:
+The results shown in the table below indicate that:
 
 1. the decay technique improves the final average loss and test accuracy for $m=10$ because of the aggressive initial learning rate and the batch averaging effect;
 2. reducing the final learning rate $\eta_{N}$ leads to a better convergence for $m=10$, eliminating the zig-zagging effect;
@@ -339,24 +359,3 @@ We further note three key aspects of AdaGrad:
     \caption{Test accuracy for different learning rates and batch sizes.}
     \label{fig: learning-rate-acc}
 \end{figure}
-
-
-\begin{table}[ht]
-    \centering
-    \begin{tabular}{|c|c|c|c|c|c|}
-        \hline
-        Avg Loss & Test Acc & $\eta$ & m & Time (s) \\
-        \hline
-        nan & 0.098 & 0.1 & 1 & 3533s \\
-        0.025 & 0.977 & 0.1 & 10 & 3268s \\
-        \textbf{0.017} & 0.976 & 0.1 & 100 & 3268s \\
-        0.027 & 0.977 & 0.01 & 1 & 3557s \\
-        \textbf{0.019} & 0.976 & 0.01 & 10 & 3338s \\
-        0.17 & 0.950 & 0.01 & 100 & 3301s \\
-        \textbf{0.019} & \textbf{0.978} & 0.001 & 1 & 3553s \\
-        0.16 & 0.952 & 0.001 & 10 & 3332s \\
-        0.53 & 0.872 & 0.001 & 100 & 3288s \\
-        \hline
-    \end{tabular}\label{tab:sgd}
-    \caption{SGD performance: Loss and Accuracy}
-\end{table}
