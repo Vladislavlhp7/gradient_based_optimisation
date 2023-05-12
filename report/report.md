@@ -103,7 +103,7 @@ We must further note a few key benefits of using an SGD over general GD:
 2. Large batch sizes exhibit a degradation in quality [@mishkin2017systematicconvolutionalneuralnetwork] and a low generalisation capability and are 
     prone to getting stuck in local minima due to their convergence to sharp minimizers of the training function [@keskar2017largebatch].
 
-## Learning Rate Experiments {#sec:learning-rate}
+## Configuration Experiments {#sec:config-experiments}
 We experimented with different hyperparameters for the SGD algorithm, in order to find the optimal configuration for our ANN classifier:
 
 1.**Learning rate**: The learning rate $\eta$ is the step size of the gradient descent algorithm, and is the most important hyper-parameter [@Goodfellow-et-al-2016].
@@ -158,6 +158,10 @@ From the experiments on both learning rates and batch sizes we reach the followi
     it can suffer from a lack of generalization caused by the convergence to sharp minimizers and the inability to escape them post factum [@keskar2017largebatch].
     This is evident for $(lr=0.001, m=10)$ and $(lr=0.001, m=100)$ from Fig. \ref{fig: batch-size-10-acc} and \ref{fig: batch-size-100-acc}, respectively,
     where the test accuracy convergence slows down over all 10 epochs.
+3. **Striking a good balance**: The optimal SGD solution depends on the trade-off between the learning rate and the batch size.
+    However, the following configurations: $(lr=0.1, m=100)$, $(lr=0.01, m=10)$, and $(lr=0.001, m=1)$ seem to strike a 
+    good balance between the two hyperparameters, achieving low average loss and high test accuracy. 
+    It is also not unreasonable to claim that the learning rate and the batch size seem inversely correlated.
 
 \begin{figure}[h]
     \centering
@@ -187,7 +191,7 @@ From the experiments on both learning rates and batch sizes we reach the followi
     \centering
     \begin{tabular}{|c|c|c|c|c|c|}
         \hline
-            Mean Loss & Test Acc & lr & Batch Size & Time (s) \\
+            Avg Loss & Test Acc & $\eta$ & m & Time (s) \\
         \hline 
             nan & 0.098 & 0.1 & 1 & 3533s \\
             0.025 & 0.977 & 0.1 & 10 & 3268s \\
@@ -255,11 +259,45 @@ More formally, we define the learning rate decay as follows:
 \end{equation}
 where $\eta_{0}$ is the initial learning rate, $\eta_{N}$ is the final learning rate, $k$ is the current epoch, and $N$ is the total number of epochs.
 
-Some researchers claim that using learning rate decay is equivalent to increasing the batch size [@smith2018dontdecay]
+Some researchers even claim that using learning rate decay is equivalent to increasing the batch size [@smith2018dontdecay]
 in terms of model performance, where the latter leads to significantly fewer parameter updates
 (i.e., improved parallelism and shorter training times).
 
+Throughout our experiments we will fix the initial and the final learning rates to $\eta_{0} = 0.1$ and $\eta_{N} = 0.001$ respectively,
+and we will vary the number of batches per epoch $m$ from 1 to 10 to 100.
+We argue that it is reasonable to use a more aggressive learning rate at the beginning of the training process to explore the parameter space, 
+and then slowly calibrate it so as not to overshoot the optimal solution which was the case for SGD in Section \ref{sec:config-experiments}.
 
+The results shown in Table \ref{tab:sgd_decay} indicate that:
+
+1. the decay technique improves the final average loss and test accuracy for $m=10$ because of the aggressive initial learning rate and the batch averaging effect;
+2. this method also suffers from the shortcomings of SGD from Section \ref{sec:config-experiments} when $m=1$ (i.e., on-line learning).
+    We believe this is once again caused by the erratic high-variance gradient updates.  
+
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|}
+        \hline
+        Avg Loss & Test Acc & $\eta_{0}$ & $\eta_{N}$ & m\\
+        \hline
+            2.303 & 0.098 & 0.1 & 0.001 & 1\\
+            \textbf{0.002} & \textbf{0.983} & 0.1 & 0.001 & 10\\
+            0.031 & 0.977 & 0.1 & 0.001 & 100\\
+        \hline
+    \end{tabular}\label{tab:sgd_decay}
+    \caption{SGD performance with learning rate decay: Loss and Accuracy}
+\end{table}
+
+We further plot the loss and test accuracy for the best batch size (i.e., $m=10$) in Figure \ref{fig:decay_10}
+to demonstrate the effect of the learning rate decay on the zigzag effect common to SGD [@wilson2003generalinnefficiencybatchtraining].
+We observe that this technique indeed helps the model converge faster and more smoothly to the optimal solution.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.49\textwidth]{charts/decay_10.png}
+    \caption{SGD with learning rate decay: Loss and Accuracy}
+    \label{fig:decay_10}
+\end{figure}
 
 ## Momentum {#sec:momentum}
 
