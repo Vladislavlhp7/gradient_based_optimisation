@@ -150,7 +150,7 @@ From the experiments on both learning rates and batch sizes we reach the followi
 
 1. **Instability for $lr=0.1, m=1$**: From Fig. \ref{fig: batch-size-1-acc} it becomes clear that a combination of
     a large learning rate and a small batch size leads to a very unstable optimization process, with a nan loss value and 
-    a constant test accuracy of $0.098$ (i.e., random guessing) as visible in Table \ref{tab:sgd}. These results are expected due to 
+    a constant test accuracy of $0.098$ (i.e., random guessing) as visible in Table @tab:sgd. These results are expected due to 
     the erratic stochastic updates, and the high variance in the gradient estimates [@Goodfellow-et-al-2016]. In contrast,
     just by decreasing the learning rate to $\eta = 0.01$ or by increasing the batch size to $m = 10$ we can achieve a stable and 
     an accurate solution ($\geq 95$%).
@@ -220,15 +220,16 @@ Some researchers even claim that using learning rate decay is equivalent to incr
 in terms of model performance, where the latter leads to significantly fewer parameter updates
 (i.e., improved parallelism and shorter training times).
 
-Nevertheless, throughout our experiments we will fix the initial and the final learning rates to $\eta_{0} = 0.1$ and $\eta_{N} = 0.001$ respectively,
-and we will vary the number of batches per epoch $m$ from 1 to 10, and to 100.
+Nevertheless, throughout our experiments we explore various combinations of the initial and the final learning rates,
+and we vary the number of batches per epoch $m=\{1, 10, 100\}$.
 We argue that it is reasonable to use a more aggressive learning rate at the beginning of the training process to explore the parameter space, 
 and then slowly calibrate it so as not to overshoot the optimal solution which was the case for SGD in Section \ref{sec:config-experiments}.
 
-The results shown in Table \ref{tab:sgd_decay} indicate that:
+The results shown in Table @tab:sgd_decay indicate that:
 
 1. the decay technique improves the final average loss and test accuracy for $m=10$ because of the aggressive initial learning rate and the batch averaging effect;
-2. however, it also suffers from the SGD's shortcomings from Section \ref{sec:config-experiments} when $m=1$ (i.e., on-line learning), 
+2. reducing the final learning rate $\eta_{N}$ leads to a better convergence for $m=10$, eliminating the zig-zagging effect;
+3. however, this method also exhibits some of SGD's shortcomings from Section \ref{sec:config-experiments} when $m=1$ (i.e., on-line learning), 
    which we believe is once again caused by the erratic high-variance gradient updates.
 
 \begin{table}[ht]
@@ -238,8 +239,10 @@ The results shown in Table \ref{tab:sgd_decay} indicate that:
         Avg Loss & Test Acc & $\eta_{0}$ & $\eta_{N}$ & m\\
         \hline
             2.303 & 0.098 & 0.1 & 0.001 & 1\\
-            \textbf{0.002} & \textbf{0.983} & 0.1 & 0.001 & 10\\
+            0.002 & 0.983 & 0.1 & 0.001 & 10\\
             0.031 & 0.977 & 0.1 & 0.001 & 100\\
+            \textbf{0.001} & \textbf{0.984} & 0.1 & 0.0001 & 10 \\
+            0.027 & 0.977 & 0.01 & 0.001 & 10 \\
         \hline
     \end{tabular}\label{tab:sgd_decay}
     \caption{SGD performance with learning rate decay: Loss and Accuracy}
@@ -247,13 +250,23 @@ The results shown in Table \ref{tab:sgd_decay} indicate that:
 
 We further plot the loss and test accuracy for the best batch size (i.e., $m=10$) in Figure \ref{fig:decay_10}
 to demonstrate the effect of the learning rate decay on the zigzag effect common to SGD [@wilson2003generalinnefficiencybatchtraining].
-We observe that this technique indeed helps the model converge faster and more smoothly to the optimal solution.
 
 \begin{figure}[ht]
     \centering
     \includegraphics[width=0.49\textwidth]{charts/decay_10.png}
-    \caption{SGD with learning rate decay: Loss and Accuracy}
+    \caption{SGD with learning rate decay ($\eta_{0}=0.1$, $\eta_{N}=0.001$, $m=10$): Loss and Accuracy}
     \label{fig:decay_10}
+\end{figure}
+
+Further reducing the final learning rate $\eta_{N}$ to $0.00001$ eliminates the zigzag effect completely towards the end of the training, as shown in 
+Figure \ref{fig:decay_10_00001}, which proves that this decay technique indeed helps the model converge faster and more 
+smoothly to the optimal solution - test accuracy of $98.4$%.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.49\textwidth]{charts/decay_10_00001.png}
+    \caption{SGD with learning rate decay ($\eta_{0}=0.1$, $\eta_{N}=0.0001$, $m=10$): Loss and Accuracy}
+    \label{fig:decay_10_00001}
 \end{figure}
 
 ## Momentum {#sec:momentum}
@@ -293,9 +306,11 @@ We further note three key aspects of AdaGrad:
    receive larger updates, whereas the frequent ones (i.e., common features) receive smaller updates.
    This is especially useful in computer vision tasks (e.g., image classification) with frequent or repetitive image patterns (e.g., background, main body of digit).
 2. **No Manual Learning Rate Tuning**: AdaGrad eliminates the need to manually tune the learning rate by
-   allowing it to adaptively tune for each parameter during training.
+   allowing it to adaptively tune for each parameter during training. Nevertheless, we are still required to choose the initial learning rate $\eta$.
 3. **Rapid Learning Rate Decay**: One issue with AdaGrad is that the learning rate monotonically decreases during training,
-   which may cause premature convergence. To address this, two algorithm extensions were proposed, namely: RMSProp [@tieleman2012lecture] and Adam [@kingma2017adam], that
+   which may cause premature convergence. To verify this, we can observe that in the AdaGrad update rule, the squared gradients $G_t$ are accumulated over time,
+   effectively shrinking the learning rate ($\eta$) on each dimension [@zeiler2012adadelta]. Eventually, $\eta$ becomes infinitesimally small, and the learning stagnates.
+   To address this, two algorithm extensions were proposed, namely: RMSProp [@tieleman2012lecture] and Adam [@kingma2017adam], that
    attempt to resolve this issue by introducing a decaying average of the historical squared gradients $E[g^2]_t$.
 
 
